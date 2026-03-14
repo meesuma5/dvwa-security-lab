@@ -117,3 +117,45 @@ Success Evidence:
 I have used Burp Suite for convenience and faster results, though most of this can be achieved by looping over the lists with a curl call. Also, I didn't want to have AI generate the script for me without me actually learning a lot so used this route.
 
 
+## 2. Command Injection
+* **Vulnerability Type:** Command Injection
+* **OWASP Category:** A03:2021-Injection
+
+### Security Level: Low
+#### Attack:
+1. The application takes an IP address and executes a `ping` command.
+2. By appending a semicolon `;` or an ampersand `&`, we can execute arbitrary shell commands.
+3. Input used: `127.0.0.1 | ls`
+4. This allowed us to list the files in the current working directory.
+
+![Command Injection Success](evidences/command-injection/low/result+cmd.png)
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. In this level, some special characters like `&&` and `;` are blacklisted by the application's source code.
+2. However, other operators like `|` (pipe) or `&` (background) are still allowed or the blacklist might be incomplete.
+3. By inspecting the source code, we can identify which characters are filtered and find alternatives.
+4. Input used: `127.0.0.1 | ls`
+
+![Source code showing blacklist](evidences/command-injection/medium/source-blacklisted.png)
+![Command Injection Success Medium](evidences/command-injection/medium/result+cmd.png)
+
+---
+
+### Security Level: High
+#### Attack:
+1. The blacklist is more extensive in this level, attempting to filter out most command separators.
+2. A common mistake in blacklisting is including spaces or not accounting for all variations of an operator.
+3. In this case, the blacklist for `| ` (pipe followed by a space) was used instead of just `|`.
+4. By using the operator without a space or using a different bypass, we can still execute commands.
+5. Input used: `127.0.0.1 |ls`
+
+![Source code showing advanced blacklist](evidences/command-injection/high/source-blacklisted.png)
+![Command Injection Success High](evidences/command-injection/high/result+cmd.png)
+
+### Note:
+We can use tools liuke BURP Suite or a simple python script, that bruteforces through all the possible characters and some combinations and check the result, which will allow us to find the vulnerability when the source code is protected.
+
+
