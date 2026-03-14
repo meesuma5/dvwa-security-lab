@@ -50,7 +50,7 @@ Priority: u=0, i
 
 #### Analysis:
 - **Why it passed:** No effective brute-force protections (no lockout, no throttling, no CAPTCHA), and weak credential handling allowed automated guessing.
-- **How higher levels help:** Adding input hardening, request controls, and tokenized workflows increases effort and reduces direct automation.
+- **How higher levels mitigate:** Adding input hardening, request controls, and tokenized workflows increases effort and reduces direct automation.
 
 ---
 
@@ -80,7 +80,7 @@ Priority: u=0, i
 
 #### Analysis:
 - **Why it passed:** SQL injection was reduced, but password guessing still worked because rate-limiting and account lock protections were still insufficient.
-- **How higher levels help:** Per-request tokens and stricter anti-automation controls make repeated forged attempts harder to scale.
+- **How higher levels mitigate:** Per-request tokens and stricter anti-automation controls make repeated forged attempts harder to scale.
 
 ---
 ### Security Level: High
@@ -121,7 +121,7 @@ Success Evidence:
 
 #### Analysis:
 - **Why it passed:** Security relied on a token, but Burp macros automated token retrieval and replay, bypassing the intended one-time barrier.
-- **How stronger controls help:** Binding tokens to strict request context, adding behavioral rate checks, and MFA/CAPTCHA would further reduce brute-force success.
+- **How higher levels mitigate:** Binding tokens to strict request context, adding behavioral rate checks, and MFA/CAPTCHA further reduce brute-force success.
 
 ---
 
@@ -144,7 +144,7 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 #### Analysis:
 - **Why it passed:** User input reached shell execution directly with no strong sanitization or allowlist validation.
-- **How higher levels help:** Character filtering and stricter command controls reduce direct command chaining opportunities.
+- **How higher levels mitigate:** Character filtering and stricter command controls reduce direct command chaining opportunities.
 
 ---
 
@@ -160,7 +160,7 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 #### Analysis:
 - **Why it passed:** Blacklist filtering was incomplete, so alternative operators still bypassed restrictions.
-- **How higher levels help:** More restrictive filtering can block more payloads, but robust allowlisting and avoiding shell calls are stronger fixes.
+- **How higher levels mitigate:** More restrictive filtering can block more payloads, but robust allowlisting and avoiding shell calls are stronger fixes.
 
 ---
 
@@ -177,7 +177,7 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 #### Analysis:
 - **Why it passed:** Defensive logic still depended on blacklist patterns, and small parsing gaps (like spacing assumptions) enabled bypass.
-- **How stronger controls help:** Replacing shell execution with safe APIs and strict allowlisted inputs would remove this class of bypass.
+- **How higher levels mitigate:** Replacing shell execution with safe APIs and strict allowlisted inputs would remove this class of bypass.
 
 ### Note:
 We can use tools liuke BURP Suite or a simple python script, that bruteforces through all the possible characters and some combinations and check the result, which will allow us to find the vulnerability when the source code is protected.
@@ -199,7 +199,7 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 
 #### Analysis:
 - **Why it passed:** No CSRF token or origin validation was enforced, so a crafted URL could trigger state-changing actions.
-- **How higher levels help:** Referer/origin checks and token validation add request legitimacy checks before accepting password changes.
+- **How higher levels mitigate:** Referer/origin checks and token validation add request legitimacy checks before accepting password changes.
 
 ---
 
@@ -219,7 +219,7 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 
 #### Analysis:
 - **Why it passed:** Security depended mainly on referer-based checks, which can be replayed or manipulated during interception.
-- **How higher levels help:** Per-request CSRF tokens tied to session state are harder to forge than header-only validation.
+- **How higher levels mitigate:** Per-request CSRF tokens tied to session state are harder to forge than header-only validation.
 
 ---
 
@@ -237,7 +237,58 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 
 #### Analysis:
 - **Why it passed:** Token protection was present, but token theft/reuse (via same-origin weakness such as XSS) allowed a valid forged request.
-- **How stronger controls help:** Using the current password (encrypted in transit) to verify the user before changing it.
+- **How higher levels mitigate:** Using the current password (encrypted in transit) to verify the user before changing it.
+
+---
+
+## 4. File Inclusion
+* **Vulnerability Type:** File Inclusion (LFI/RFI behavior)
+* **OWASP Category:** A05:2021-Security Misconfiguration
+
+### Security Level: Low
+#### Attack:
+1. The page parameter is directly used for file loading with weak validation.
+2. By supplying a crafted value, we force the application to include attacker-controlled/unsafe content.
+3. Initial crafted request evidence:
+![file4](evidences/file-inclusion/low/file4.png)
+4. We then use encoded payload behavior and decode the returned content.
+![base64-string-decoded](evidences/file-inclusion/low/base64-string-decoded.png)
+5. This finally leads to execution of injected PHP logic.
+![php-executed-low](evidences/file-inclusion/low/php-executed.png)
+
+#### Analysis:
+- **Why it passed:** User input for include paths was trusted, enabling arbitrary local file access and include abuse.
+- **How higher levels mitigate:** Restricting include targets to a strict allowlist and disabling risky wrappers blocks this attack path.
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. **Security update made:** DVWA medium added input filtering to strip common traversal and URL patterns before `include()`.
+![file-inclusion-medium-security-update](evidences/file-inclusion/medium/security-update.png)
+2. The filter is blacklist-based, so we bypassed it using an alternate wrapper/payload format that still reached the include sink.
+3. We fetched PHP source/content using `php://filter` base64 behavior at this level.
+![base-64-php-fetched](evidences/file-inclusion/medium/base-64-php-fetched.png)
+4. After that, the payload still reached executable context and ran.
+![php-executed-medium](evidences/file-inclusion/medium/php-executed.png)
+
+#### Analysis:
+- **Why it passed:** The medium patch blocked only known bad strings, not the full class of include wrapper abuse.
+- **How higher levels mitigate:** Strict allowlisting of permitted include targets and wrapper blocking removes this bypass path.
+
+---
+
+### Security Level: High
+#### Attack:
+1. **Security update made:** High level replaced simple blacklist filtering with tighter include controls (allowlisted file pattern / expected file targets only).
+![file-inclusion-high-security-update](evidences/file-inclusion/high/security-update.png)
+2. We were still able to trigger code execution through the remaining allowed include path.
+![php-executed-high](evidences/file-inclusion/high/php-executed.png)
+3. We could **not** get base64 source output on high because `php://filter` was no longer accepted by the stricter include checks (it does not match the allowed target pattern), so wrapper-based disclosure failed.
+
+#### Analysis:
+- **Why it passed:** Even with tighter checks, the file:// domain allowed to visit all files if the exact location of the file is known.
+- **How higher levels mitigate:** Hard-coding the exact paths of the files the user can visit and rejecting aneyr input.
 
 
 
