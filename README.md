@@ -158,4 +158,50 @@ I have used Burp Suite for convenience and faster results, though most of this c
 ### Note:
 We can use tools liuke BURP Suite or a simple python script, that bruteforces through all the possible characters and some combinations and check the result, which will allow us to find the vulnerability when the source code is protected.
 
+---
+
+## 3. Cross-Site Request Forgery (CSRF)
+* **Vulnerability Type:** Cross-Site Request Forgery (CSRF)
+* **OWASP Category:** A01:2021-Broken Access Control
+
+### Security Level: Low
+#### Attack:
+1. The application allows changing the user's password via a simple GET request without any CSRF tokens.
+2. An attacker can craft a malicious URL and trick a logged-in user into clicking it.
+3. Example payload and request:
+![CSRF Request](evidences/csrf/low/request.png)
+4. The password is successfully changed without the user's explicit consent: 
+![CSRF Result](evidences/csrf/low/result.png)
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. The application introduces a check on the `HTTP Referer` header to ensure the request originates from the same server.
+2. We begin with a legitimate request to observe the standard behavior and how security is enforced.
+![actual-request + security-increase](evidences/csrf/medium/actual-request%20+%20security-increase.png)
+3. Using Burp Suite, we use the same referer token with a password change request to modify it.
+![intercepted+forged-request](evidences/csrf/medium/intercepted+forged-request.png)
+4. We verify that the password has been successfully changed through the intercepted request.
+![password-changed-verification](evidences/csrf/medium/password-changed-verification.png)
+5. We also observe that simply using an incorrect original password (without the referral bypass) would normally lead to failure.
+![actual-password-incorrect](evidences/csrf/medium/actual-password-incorrect.png)
+6. Finally, the forged request is fully accepted by the application.
+![forged-pw-accepted](evidences/csrf/medium/forged-pw-accepted.png)
+
+---
+
+### Security Level: High
+#### Attack:
+1. The application now uses a `user_token` (CSRF token) that is unique per session/request, making simple forgery difficult.
+2. We start by observing a legitimate password change request to understand the token structure.
+![initial-password-change-request](evidences/csrf/high/initial-password-change-request.png)
+3. Since the token is required, we must fetch a fresh one. This usually requires an secondary vulnerability like XSS to read the token from the page.
+![fetching-a-new-user-token](evidences/csrf/high/fetching-a-new-user-token.png)
+4. Once we have a valid token, we can craft an attack link that includes this specific `user_token`.
+![attack-link-with-user-token](evidences/csrf/high/attack-link-with-user-token.png)
+5. When the victim clicks the link containing the valid token, the forgery is successful.
+![successful-forgery](evidences/csrf/high/successful-forgery.png)
+
+
 
