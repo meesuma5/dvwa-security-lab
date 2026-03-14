@@ -48,6 +48,10 @@ Priority: u=0, i
 ![passwords list](evidences/brute/low/passwords.png)
 ![matched usernames to passwords](evidences/brute/low/matched.png)
 
+#### Analysis:
+- **Why it passed:** No effective brute-force protections (no lockout, no throttling, no CAPTCHA), and weak credential handling allowed automated guessing.
+- **How higher levels help:** Adding input hardening, request controls, and tokenized workflows increases effort and reduces direct automation.
+
 ---
 
 ### Security Level: Medium
@@ -73,6 +77,10 @@ Priority: u=0, i
 ```
 
 ![medium-bruteforce-run](evidences/brute/medium/bruteforce-pw-mdedium.png)
+
+#### Analysis:
+- **Why it passed:** SQL injection was reduced, but password guessing still worked because rate-limiting and account lock protections were still insufficient.
+- **How higher levels help:** Per-request tokens and stricter anti-automation controls make repeated forged attempts harder to scale.
 
 ---
 ### Security Level: High
@@ -111,6 +119,10 @@ The final Payload:
 Success Evidence: 
 ![success evidence](evidences/brute/high/success.png)
 
+#### Analysis:
+- **Why it passed:** Security relied on a token, but Burp macros automated token retrieval and replay, bypassing the intended one-time barrier.
+- **How stronger controls help:** Binding tokens to strict request context, adding behavioral rate checks, and MFA/CAPTCHA would further reduce brute-force success.
+
 ---
 
 ### Note:
@@ -130,6 +142,10 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 ![Command Injection Success](evidences/command-injection/low/result+cmd.png)
 
+#### Analysis:
+- **Why it passed:** User input reached shell execution directly with no strong sanitization or allowlist validation.
+- **How higher levels help:** Character filtering and stricter command controls reduce direct command chaining opportunities.
+
 ---
 
 ### Security Level: Medium
@@ -141,6 +157,10 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 ![Source code showing blacklist](evidences/command-injection/medium/source-blacklisted.png)
 ![Command Injection Success Medium](evidences/command-injection/medium/result+cmd.png)
+
+#### Analysis:
+- **Why it passed:** Blacklist filtering was incomplete, so alternative operators still bypassed restrictions.
+- **How higher levels help:** More restrictive filtering can block more payloads, but robust allowlisting and avoiding shell calls are stronger fixes.
 
 ---
 
@@ -154,6 +174,10 @@ I have used Burp Suite for convenience and faster results, though most of this c
 
 ![Source code showing advanced blacklist](evidences/command-injection/high/source-blacklisted.png)
 ![Command Injection Success High](evidences/command-injection/high/result+cmd.png)
+
+#### Analysis:
+- **Why it passed:** Defensive logic still depended on blacklist patterns, and small parsing gaps (like spacing assumptions) enabled bypass.
+- **How stronger controls help:** Replacing shell execution with safe APIs and strict allowlisted inputs would remove this class of bypass.
 
 ### Note:
 We can use tools liuke BURP Suite or a simple python script, that bruteforces through all the possible characters and some combinations and check the result, which will allow us to find the vulnerability when the source code is protected.
@@ -173,6 +197,10 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 4. The password is successfully changed without the user's explicit consent: 
 ![CSRF Result](evidences/csrf/low/result.png)
 
+#### Analysis:
+- **Why it passed:** No CSRF token or origin validation was enforced, so a crafted URL could trigger state-changing actions.
+- **How higher levels help:** Referer/origin checks and token validation add request legitimacy checks before accepting password changes.
+
 ---
 
 ### Security Level: Medium
@@ -189,6 +217,10 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 6. Finally, the forged request is fully accepted by the application.
 ![forged-pw-accepted](evidences/csrf/medium/forged-pw-accepted.png)
 
+#### Analysis:
+- **Why it passed:** Security depended mainly on referer-based checks, which can be replayed or manipulated during interception.
+- **How higher levels help:** Per-request CSRF tokens tied to session state are harder to forge than header-only validation.
+
 ---
 
 ### Security Level: High
@@ -202,6 +234,10 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 ![attack-link-with-user-token](evidences/csrf/high/attack-link-with-user-token.png)
 5. When the victim clicks the link containing the valid token, the forgery is successful.
 ![successful-forgery](evidences/csrf/high/successful-forgery.png)
+
+#### Analysis:
+- **Why it passed:** Token protection was present, but token theft/reuse (via same-origin weakness such as XSS) allowed a valid forged request.
+- **How stronger controls help:** Using the current password (encrypted in transit) to verify the user before changing it.
 
 
 
