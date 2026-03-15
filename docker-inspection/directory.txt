@@ -1,0 +1,4 @@
+(base) meesum.abbas@MT-VYDJX0KYCG-Meesum-Abbas ~ % docker exec -it dvwa /bin/bash
+root@394e9972d9ea:/# ls var/www/html/
+CHANGELOG.md  README.md  config  dvwa	   favicon.ico	ids_log.php  instructions.php  logout.php  phpinfo.php	security.php  vulnerabilities
+COPYING.txt   about.php  docs	 external  hackable	index.php    login.php	       php.ini	   robots.txt	setup.php

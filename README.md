@@ -330,8 +330,8 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 ### Security Level: High
 #### Attack:
 1. High level introduced stronger restrictions, including tighter file-type handling.
-2. Prepared a payload disguised as an image-like upload to pass the validation layer.
-3. Direct execution path was constrained, but code execution was still achieved by chaining with low security file-inclusion behavior.
+2. Created a file with the same `new.php` contents but added a jpg header to disguise it in the required format
+3. This file was successfully uploaded and though it wasn't directly executable, I used `File Inclusion` in `Low Security` to execute the file.
 
 ![file-upload-high-security-update](evidences/file-upload/high/security-update.png)
 ![file-upload-high-fake-image](evidences/file-upload/high/fake-as-image.png)
@@ -342,5 +342,88 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 - **Why it passed:** Upload hardening improved, but exploit chaining (upload + include weakness) still enabled server-side execution.
 - **How higher levels mitigate:** Defense-in-depth is required: secure upload validation, non-executable storage, and hardened include logic together.
 
+---
+## Docker Inspection Tasks:
+### Commands and their outputs
+1. List all running containers
+```
+docker ps
+```
+![ps result](docker-inspection/ps.png)
+2. Fetch container config
+```
+docker inspect dvwa
+```
+Output in : [inspect-output.txt](docker-inspection/inspection.txt)
 
+3. Fetch logs of the container
+```
+docker logs dvwa
+```
+Output in : [logs.txt](docker-inspection/logs.txt)
+
+4. Connect the terminal to the containers bash and view the list of files
+```
+docker exec -it dvwa /bin/bash
+ls /var/www/html
+```
+Output in: [directory.txt](docker-inspection/directory.txt)
+
+### 1) Where application files are stored
+- DVWA application files are stored inside the container at `/var/www/html/`.
+- Evidence: container listing shows `ls var/www/html/` with DVWA files and folders such as `index.php`, `login.php`, `vulnerabilities`, and `dvwa`.
+
+### 2) What backend technology DVWA uses
+- DVWA uses a **PHP + Apache + MySQL/MariaDB** backend stack.
+- Evidence:
+	- PHP app files are visible in the web root (`*.php` files like `index.php`, `login.php`, `setup.php`).
+	- Logs show Apache startup: `Apache/2.4.25 (Debian)`.
+	- Logs show database startup: `Starting MariaDB database server: mysqld`.
+
+### 3) How Docker isolates the environment
+- Docker isolates DVWA by running it in a separate container runtime context with its own filesystem, process namespace, and network identity.
+- Evidence from container inspection:
+	- Isolated network mode: `NetworkMode: bridge`
+	- Dedicated container IP: `172.17.0.2`
+	- Controlled host exposure via port mapping: host `8071` -> container `80/tcp`
+	- Private namespaces and restrictions: `CgroupnsMode: private`, `IpcMode: private`, `MaskedPaths`, `ReadonlyPaths`
+	- Layered container filesystem driver: `overlay2`
+
+## Security Analysis Questions:
+1. Why does SQL Injection succeed at Low security?
+    - There is no input sanitation and the input is directly fed into the query. The attacker can easily break out of the query using an apostorphe and then execute the command they wish. Harmful commands like `DROP database` can be executed which will be a huge loss.
+2. What control prevents it at high?
+    - It makes it difficult by using session-based input handling, escaping user input, and limiting query scope but doesn't really prevent it. It can be mitigated by enforcing dataypes (as in impossible) or using parametrized queries with repository based input.
+3. Does HTTPS prevent these attacks? 
+    - HTTPS secures the data in transit, which means that interception based attacks will not be possible. Most of the issues in DVWA are on the application layer rather than the transport, so while HTTPS will secure the transport layer, the application layer is largely still unsafe.
+4. What risks exist if this application is deployed publicly: 
+    - The server is insecure. Using the right vulenrabilities, attackers can gain full access of the server, modifying/adding/deleting files, executing any commands etc. Specifically, if I deployed DVWA to my laptop and then exposed it publicly, anyone can access my PC in full, adding, modifying, sending files and all other security issues will arise.
+5. Map each vulnerability to its OWASP Top 10 category:
+    - Already done but refer to the following table for easier retrieval:
+    
+<table border="1" cellspacing="0" cellpadding="6">
+	<thead>
+		<tr>
+			<th>DVWA Vulnerability Module</th>
+			<th>Primary OWASP Top 10 Category</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr><td>Brute Force</td><td>A07:2021 – Identification and Authentication Failures</td></tr>
+		<tr><td>Command Injection</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>CSRF</td><td>A01:2021 – Broken Access Control</td></tr>
+		<tr><td>File Inclusion</td><td>A05:2021 – Security Misconfiguration</td></tr>
+		<tr><td>File Upload</td><td>A05:2021 – Security Misconfiguration</td></tr>
+		<tr><td>Insecure CAPTCHA</td><td>A07:2021 – Identification and Authentication Failures</td></tr>
+		<tr><td>SQL Injection</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>SQL Injection (Blind)</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>Weak Session IDs</td><td>A07:2021 – Identification and Authentication Failures</td></tr>
+		<tr><td>XSS (Reflected)</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>XSS (Stored)</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>XSS (DOM)</td><td>A03:2021 – Injection</td></tr>
+		<tr><td>CSP Bypass</td><td>A05:2021 – Security Misconfiguration</td></tr>
+		<tr><td>JavaScript (client-side trust issues)</td><td>A04:2021 – Insecure Design</td></tr>
+		<tr><td>Open HTTP Redirect</td><td>A01:2021 – Broken Access Control</td></tr>
+	</tbody>
+</table>
 
