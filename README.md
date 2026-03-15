@@ -396,6 +396,65 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 - **How higher levels mitigate:** True mitigation requires server-side CAPTCHA verification with provider API, strict CSRF binding, and rejecting any client-asserted verification state.
 
 ---
+
+## 7. SQL Injection
+* **Vulnerability Type:** SQL Injection
+* **OWASP Category:** A03:2021-Injection
+
+### SQL Used:
+```
+1 OR 1 = 1 UNION SELECT user, password FROM users#
+```
+The idea is to basically fetch all users, with their first name, second name, username, and password. The password is sotred in hashes so we might further need to decode them, however, limiting the scope of this vulnerability to only check for SQLi.
+### Security Level: Low
+#### Attack:
+1. The `id` parameter is directly concatenated into a SQL query without proper sanitization.
+2. By injecting SQL control characters, the query logic can be altered to dump additional records.
+3. A UNION-based payload returns user and password hash data from the `users` table.
+
+![sqli-low-query-result](evidences/sqli/low/query-result.png)
+
+#### Analysis:
+- **Why it passed:** Input was trusted and used directly in SQL construction, so attacker-controlled SQL executed on the backend.
+- **How higher levels mitigate:** Restricting inputs with dropdowns and query sanitization for escape strings.
+---
+
+### Security Level: Medium
+#### Attack:
+1. Medium introduces a controlled dropdown for IDs and some filtering, reducing direct text input on the page. It also introduces a check for quotes to sanitize that from the input
+2. By tampering with the value sent by the dropdown using the console  in Firefox, we can still inject crafted SQL in the `id` parameter. In fact it is now easier as we don't need quotes.
+3. The modified request succeeds and returns the same data as in the previous vulnerability.
+
+![sqli-medium-sql-change](evidences/sqli/medium/sql-change.png)
+
+![sqli-medium-dropdown-tampering](evidences/sqli/medium/tampering-the-dropdown-value.png)
+
+![sqli-medium-result](evidences/sqli/medium/result.png)
+
+#### Analysis:
+- **Why it passed:** Client-side control (dropdown) was treated as a trust boundary, but value tampering bypassed it.
+- **How higher levels mitigate:** Sending SQL via a different page, and limiting the results to only 1.
+
+---
+
+### Security Level: High
+#### Attack:
+1. Though it redirects to a new page and sends query along with the CSRF token, SQL injection now just goes in from another webpage.
+2. The same sql can be sent as in low-security to get the data.
+3. The UNION query overrides the`LIMIT 1` block.
+![sqli-high-updated-sql](evidences/sqli/high/updated-sql.png)
+
+![sqli-high-query-sent](evidences/sqli/high/query-sent.png)
+
+![sqli-high-result](evidences/sqli/high/result.png)
+
+#### Analysis:
+- **Why it passed:** Defensive changes increased effort but did not eliminate dynamic SQL injection primitives.
+- **How higher levels mitigate:** Use parameterized queries everywhere, enforce strict typed allowlists server-side, and do not trust user input at all.
+
+---
+
+
 ## Docker Inspection Tasks:
 ### Commands and their outputs
 1. List all running containers
