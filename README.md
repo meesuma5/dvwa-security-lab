@@ -23,7 +23,7 @@ This report documents the security testing and vulnerability assessment performe
 1. Signed in with the admin password username. 
 2. Opened the link of the image and modified the url to get the list of all users. 
 3. Used SQL injection to login.
-![user sql injection](<evidences/brute/low/Screenshot 2026-03-12 at 10.25.56 AM.png>)
+![user sql injection](<evidences/brute/low/sql-injection.png>)
 4. Also used cluster bomb attack with the 100 most common passwords to find the passwords for all users. Used Burp Suite Intruder with the payload 
 ```
 GET /vulnerabilities/brute/?username=$username$&password=$password$&Login=Login HTTP/1.1
@@ -341,6 +341,59 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 #### Analysis:
 - **Why it passed:** Upload hardening improved, but exploit chaining (upload + include weakness) still enabled server-side execution.
 - **How higher levels mitigate:** Defense-in-depth is required: secure upload validation, non-executable storage, and hardened include logic together.
+---
+
+## 6. Insecure CAPTCHA
+* **Vulnerability Type:** CAPTCHA Bypass / Weak Multi-Step Verification Logic
+* **OWASP Category:** A07:2021-Identification and Authentication Failures
+
+### Security Level: Low
+#### Attack:
+1. The password reset workflow is split in steps, but server-side validation trusts the `step` parameter.
+2. Directly send the request with `step=2`, and the password is changed without solving CAPTCHA.
+
+![insecure-captcha-low-incorrect-captcha](evidences/insecure-captcha/low/incorrect-captcha.png)
+
+![insecure-captcha-low-password-changed](evidences/insecure-captcha/low/password-changed.png)
+
+#### Analysis:
+- **Why it passed:** The backend trusted client-controlled workflow state (`step`) and did not enforce CAPTCHA completion server-side.
+- **How higher levels mitigate:** Additional state checks increase requirements.
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. Medium keeps the same weak step-based logic from low.
+2. The only extra requirement is a new request parameter: `passed_captcha=true`.
+3. Sending `step=2` plus `passed_captcha=true` allows successful password change without completing a real CAPTCHA challenge.
+
+![insecure-captcha-medium-incorrect-captcha](evidences/insecure-captcha/medium/incorrect-captcha.png)
+
+![insecure-captcha-medium-password-changed](evidences/insecure-captcha/medium/password-changed.png)
+
+#### Analysis:
+- **Why it passed:** Security relied on a client-supplied flag (`passed_captcha`) instead of server-verified CAPTCHA proof.
+- **How higher levels mitigate:** Adding token and header validation increases complexity.
+
+---
+
+### Security Level: High
+#### Attack:
+1. High requires all previous bypass pieces and adds stricter request conditions.
+2. Required parameters include:
+	- `step=1`
+	- `g-recaptcha-response` with a `hidd3n_valu3` accepted value
+3. A fresh `user_token` (CSRF token) is also required, but it can be obtained from a new session without solving any CAPTCHA and without needing a specific victim account context.
+4. Setting `User-Agent` to `reCAPTCHA` satisfies the additional high-level check.
+5. With those values combined, the password change is accepted.
+
+![insecure-captcha-high-incorrect-captcha](evidences/insecure-captcha/high/incorrect-captcha.png)
+![insecure-captcha-high-password-changed](evidences/insecure-captcha/high/password-changed.png)
+
+#### Analysis:
+- **Why it passed:** Controls were implemented as forgeable request attributes (fixed CAPTCHA response value, obtainable token path, predictable header check) rather than robust server-side verification.
+- **How higher levels mitigate:** True mitigation requires server-side CAPTCHA verification with provider API, strict CSRF binding, and rejecting any client-asserted verification state.
 
 ---
 ## Docker Inspection Tasks:
