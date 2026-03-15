@@ -290,5 +290,57 @@ We can use tools liuke BURP Suite or a simple python script, that bruteforces th
 - **Why it passed:** Even with tighter checks, the file:// domain allowed to visit all files if the exact location of the file is known.
 - **How higher levels mitigate:** Hard-coding the exact paths of the files the user can visit and rejecting aneyr input.
 
+---
+
+## 5. File Upload
+* **Vulnerability Type:** Unrestricted File Upload / Remote Code Execution (RCE)
+* **OWASP Category:** A03:2021-Injection
+
+### Security Level: Low
+#### Attack:
+1. Created a PHP web shell payload (`new.php`) containing command execution logic.
+2. Uploaded the file directly through DVWA upload form without meaningful file type validation.
+3. Accessed the uploaded file path and executed commands through a query parameter.
+
+![file-upload-low-success](evidences/file-upload/low/upload-success.png)
+![file-upload-low-exec](evidences/file-upload/low/exec-success.png)
+
+#### Analysis:
+- **Why it passed:** Upload validation trusted user-supplied file properties and allowed executable server-side files.
+- **How higher levels mitigate:** MIME/extension checks and safer storage rules make direct PHP upload and execution harder.
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. Medium level added stricter upload checks (shown in source/security update evidence).
+2. Intercepted the upload request and modified the `Content-Type` to an image type while sending PHP content.
+3. The file was accepted and remained executable when accessed on the server.
+
+![file-upload-medium-security-update](evidences/file-upload/medium/security-update.png)
+![file-upload-medium-upload-success](evidences/file-upload/medium/upload-success-with-content-type-modification.png)
+![file-upload-medium-exec](evidences/file-upload/medium/exec-success-medium.png)
+
+#### Analysis:
+- **Why it passed:** Validation relied on spoofable request metadata (like `Content-Type`) instead of robust server-side content and execution controls.
+- **How higher levels mitigate:** Combining strict extension allowlists, real file signature checks, and non-executable storage reduces bypasses.
+
+---
+
+### Security Level: High
+#### Attack:
+1. High level introduced stronger restrictions, including tighter file-type handling.
+2. Prepared a payload disguised as an image-like upload to pass the validation layer.
+3. Direct execution path was constrained, but code execution was still achieved by chaining with low security file-inclusion behavior.
+
+![file-upload-high-security-update](evidences/file-upload/high/security-update.png)
+![file-upload-high-fake-image](evidences/file-upload/high/fake-as-image.png)
+![file-upload-high-upload-success](evidences/file-upload/high/upload-success.png)
+![file-upload-high-exec-via-lfi](evidences/file-upload/high/exec-success-with-low-file-inclusion.png)
+
+#### Analysis:
+- **Why it passed:** Upload hardening improved, but exploit chaining (upload + include weakness) still enabled server-side execution.
+- **How higher levels mitigate:** Defense-in-depth is required: secure upload validation, non-executable storage, and hardened include logic together.
+
 
 
