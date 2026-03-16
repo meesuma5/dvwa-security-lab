@@ -550,6 +550,58 @@ We want to here find out the length of the version (first part of finding out th
 
 ---
 
+## 10. XSS (DOM)
+* **Vulnerability Type:** DOM-Based Cross-Site Scripting
+* **OWASP Category:** A03:2021-Injection
+
+### Security Level: Low
+#### Attack:
+1. The page reads user-controlled input from the URL fragment and writes it into the DOM without proper sanitization.
+2. A payload usign the script tag is supplied in the URL fragment in place of the language to execute JS code in the victim browser.
+![xss-dom-low-payload](evidences/xss_dom/low/payload.png)
+3. The browser processes the payload, causing a redirect/request to attacker-controlled infrastructure.
+
+![xss-dom-low-redirection](evidences/xss_dom/low/redirection.png)
+![xss-dom-low-request-received](evidences/xss_dom/low/request-received.png)
+
+#### Analysis:
+- **Why it passed:** Untrusted client-side data was inserted into DOM execution context without output encoding or safe sink handling.
+- **How higher levels mitigate:** Input filtering and safer DOM APIs can reduce direct payload execution paths.
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. Medium introduces additional filtering, but payload construction still reaches a vulnerable client-side sink.
+2. Using a crafted payload that doesn't involve the black-listed script tag and closes the select tag properly bypasses the filter logic and executes in the browser context.
+![xss-dom-medium-payload](evidences/xss_dom/medium/payload.png)
+3. The cookie is easily stolen with a redirection as well.
+
+![xss-dom-medium-redirection](evidences/xss_dom/medium/redirection.png)
+![xss-dom-medium-request-received](evidences/xss_dom/medium/request-recieved.png)
+
+#### Analysis:
+- **Why it passed:** Blacklist-style filtering was bypassable and did not remove the underlying unsafe DOM sink usage.
+- **How higher levels mitigate:** Strict allowlisting plus context-aware encoding and safe assignment APIs provide stronger protection.
+
+---
+
+### Security Level: High
+#### Attack:
+1. High applies stricter server-side controls but still processes attacker-influenced DOM input on the client side.
+2. The payload is designed to pass naturally through the server (by not sending the parameter to it), but on the client, the javascript reads the full URL which executes the script tag.
+![xss-dom-high-payload](evidences/xss_dom/high/payload.png)
+3. Redirection and receiver logs confirm successful DOM-based XSS execution.
+
+![xss-dom-high-redirection](evidences/xss_dom/high/redirection.png)
+![xss-dom-high-request-received](evidences/xss_dom/high/request-received.png)
+
+#### Analysis:
+- **Why it passed:** The core issue remained in client-side trust of untrusted data and unsafe DOM rendering flow.
+- **How higher levels mitigate:** Eliminate dangerous sinks (`innerHTML`, eval-like behavior), enforce strict sanitization, and adopt CSP as defense-in-depth.
+
+---
+
 
 ## Docker Inspection Tasks:
 ### Commands and their outputs
