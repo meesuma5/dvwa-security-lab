@@ -514,6 +514,42 @@ We want to here find out the length of the version (first part of finding out th
 
 ---
 
+## 9. Weak Session IDs
+* **Vulnerability Type:** Weak Session ID Generation / Predictable Session Tokens
+* **OWASP Category:** A07:2021-Identification and Authentication Failures
+
+### Security Level: Low
+#### Session ID Generation:
+1. The session ID is generated as a simple incrementing integer.
+2. Observed pattern: starts from `1` and increments by `+1` for each new session.
+
+![weak-session-low-first](evidences/weak-session-ids/low/first.png)
+![weak-session-low-sequence](evidences/weak-session-ids/low/third-and-second.png)
+
+---
+
+### Security Level: Medium
+#### Session ID Generation:
+1. The session ID is generated from Unix time.
+2. Observed pattern: value matches current Unix timestamp.
+
+![weak-session-medium-unix-timestamp](evidences/weak-session-ids/medium/unix-time-stamp.png)
+
+---
+
+### Security Level: High
+#### Session ID Generation:
+1. The base value is still an incrementing integer sequence.
+2. The application applies `md5()` to that integer and uses the hash as the session ID.
+3. Observed pattern: sequential base numbers (`7`, `8`, ...) map to their MD5 hashes.
+
+![weak-session-high-7-cookie](evidences/weak-session-ids/high/7-cookie.png)
+![weak-session-high-7-decoded](evidences/weak-session-ids/high/7-decoded.png)
+![weak-session-high-8-cookie](evidences/weak-session-ids/high/8-cookie.png)
+![weak-session-high-8-decoded](evidences/weak-session-ids/high/8-decoded.png)
+
+---
+
 
 ## Docker Inspection Tasks:
 ### Commands and their outputs
