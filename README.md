@@ -439,9 +439,10 @@ The idea is to basically fetch all users, with their first name, second name, us
 
 ### Security Level: High
 #### Attack:
-1. Though it redirects to a new page and sends query along with the CSRF token, SQL injection now just goes in from another webpage.
+1. Though it sends the query through cookie, SQL injection still takes place in the exact same manner as in the low security, just that now it goes in from a cookie genreator through the cookie.
 2. The same sql can be sent as in low-security to get the data.
-3. The UNION query overrides the`LIMIT 1` block.
+3. The # query comments out the `LIMIT 1` block.
+
 ![sqli-high-updated-sql](evidences/sqli/high/updated-sql.png)
 
 ![sqli-high-query-sent](evidences/sqli/high/query-sent.png)
@@ -451,6 +452,65 @@ The idea is to basically fetch all users, with their first name, second name, us
 #### Analysis:
 - **Why it passed:** Defensive changes increased effort but did not eliminate dynamic SQL injection primitives.
 - **How higher levels mitigate:** Use parameterized queries everywhere, enforce strict typed allowlists server-side, and do not trust user input at all.
+
+---
+
+## 8. SQL Injection (Blind)
+* **Vulnerability Type:** SQL Injection (Blind)
+* **OWASP Category:** A03:2021-Injection
+
+### SQL Used:
+```
+1' AND LENGTH(@@version) = 1 # result: missing id
+1' AND LENGTH(@@version) > 20 # result: id exists
+1' AND LENGTH(@@version) > 30 # result: missing id
+1' AND LENGTH(@@version) > 25 # result: missing id
+1' AND LENGTH(@@version) > 23 # result: id exists
+1' AND LENGTH(@@version) = 24 # result: id exists
+```
+We want to here find out the length of the version (first part of finding out the sql version). 
+
+### Security Level: Low
+#### Attack:
+1. At low level, the `id` input is directly injectable and the page behavior changes based on boolean conditions.
+2. We send blind predicates (for example using `LENGTH(...)`) and compare the server response between true vs false conditions.
+3. Matching response differences confirm that the injected condition executed successfully.
+
+![sqli-blind-low-correct](evidences/sqli_blind/low/correct-length-query+response.png)
+![sqli-blind-low-incorrect](evidences/sqli_blind/low/incorrect-length-query+response.png)
+
+#### Analysis:
+- **Why it passed:** Unsanitized SQL input let attacker-controlled boolean expressions run directly in backend queries.
+- **How higher levels mitigate:** Restricting the possible entries with a dropdown reduces the chances of such an attack.
+
+---
+
+### Security Level: Medium
+#### Attack:
+1. Medium uses a dropdown and reduced free-form input, similar to SQLi medium.
+2. By tampering the dropdown value in-browser (or via interception), we inject blind SQL predicates in the `id` value.
+3. The application still produces distinguishable success behavior for true conditions, confirming blind extraction remains possible.
+
+![sqli-blind-medium-tamper-success](evidences/sqli_blind/medium/dropdown-value-update-and-succesful-attack.png)
+
+#### Analysis:
+- **Why it passed:** Client-side controls were bypassed, and server-side query logic still trusted manipulated input.
+- **How higher levels mitigate:** Moving parameters to cookies and making them less readable + more difficult to tamper.
+
+---
+
+### Security Level: High
+#### Attack:
+1. At high level, input path changes (cookie-based flow), but the injection primitive still exists.
+2. We place blind predicates in the cookie value and compare responses for correct vs incorrect conditions.
+3. Different outcomes between true and false predicates confirm blind SQLi is still exploitable.
+
+![sqli-blind-high-correct-cookie](evidences/sqli_blind/high/correct-length-sqli-cookie.png)
+![sqli-blind-high-incorrect-cookie](evidences/sqli_blind/high/incorrect-length-sqli-cookie.png)
+
+#### Analysis:
+- **Why it passed:** Data source changed, but the SQL sink stayed injectable; moving user input to cookies is not a fix.
+- **How higher levels mitigate:** Use of parametrized queries, not trusting user-input and server side restrictions on input.
 
 ---
 
